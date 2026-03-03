@@ -1,0 +1,11 @@
+services:
+  etcd-webui:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/config:ro
+      - ./certs:/certs:ro
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+    restart: unless-stopped

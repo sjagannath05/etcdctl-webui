@@ -1,0 +1,28 @@
+clusters:
+  - name: "production Steering etcd"
+    endpoints:
+      - "https://172.22.8.60:12379"
+      - "https://172.22.16.60:12379"
+      - "https://172.22.144.60:12379"
+    auth:
+      type: mtls
+      cacert: /certs/ca.pem
+      cert: /certs/client.pem
+      key: /certs/client-key.pem
+
+# Add more clusters below, e.g. staging or dev:
+#
+#  - name: "staging"
+#    endpoints:
+#      - "https://10.0.0.1:2379"
+#    auth:
+#      type: password
+#      username: admin
+#      password: secret
+#      cacert: /certs/staging-ca.pem
+#
+#  - name: "dev"
+#    endpoints:
+#      - "http://localhost:2379"
+#    auth:
+#      type: none

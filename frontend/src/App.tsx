@@ -118,6 +118,7 @@ export default function App() {
   }
 
   const activeClusterInfo = clusters.find((c) => c.name === activeCluster)
+  const isReadOnly = activeClusterInfo?.readonly ?? false
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
@@ -143,12 +144,14 @@ export default function App() {
           </span>
         )}
 
-        <button
-          onClick={() => setShowNewKey(true)}
-          className="px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
-        >
-          + New Key
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={() => setShowNewKey(true)}
+            className="px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
+          >
+            + New Key
+          </button>
+        )}
 
         {/* Export */}
         <button
@@ -161,20 +164,24 @@ export default function App() {
         </button>
 
         {/* Import */}
-        <button
-          onClick={() => importInputRef.current?.click()}
-          title="Import keys from JSON file"
-          className="px-3 py-1.5 text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md transition-colors"
-        >
-          ↑ Import
-        </button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={handleImportFile}
-        />
+        {!isReadOnly && (
+          <>
+            <button
+              onClick={() => importInputRef.current?.click()}
+              title="Import keys from JSON file"
+              className="px-3 py-1.5 text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md transition-colors"
+            >
+              ↑ Import
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+          </>
+        )}
 
         <button
           onClick={() => loadKeys()}
@@ -209,6 +216,7 @@ export default function App() {
             keyPath={selectedKey}
             onDeleted={handleDeleted}
             onSaved={() => loadKeys()}
+            readOnly={isReadOnly}
           />
         </div>
       </div>
@@ -225,7 +233,10 @@ export default function App() {
         ) : (
           <span className="text-slate-500">—</span>
         )}
-        <span className="ml-auto text-slate-500">{keys.length} keys</span>
+        {isReadOnly && (
+          <span className="ml-auto text-amber-400 font-medium">🔒 Read-Only</span>
+        )}
+        <span className={isReadOnly ? "text-slate-500" : "ml-auto text-slate-500"}>{keys.length} keys</span>
       </footer>
 
       {/* New key modal */}

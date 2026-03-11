@@ -1,5 +1,6 @@
 clusters:
   - name: "production Steering etcd"
+    readonly: true  # prevent accidental writes to production
     endpoints:
       - "https://172.22.8.60:12379"
       - "https://172.22.16.60:12379"

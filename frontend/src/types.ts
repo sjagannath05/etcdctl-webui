@@ -17,6 +17,7 @@ export interface ClusterInfo {
   name: string
   endpoints: string[]
   authType: 'mtls' | 'tls' | 'password' | 'none'
+  readonly: boolean
 }
 
 export interface ExportData {

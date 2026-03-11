@@ -15,6 +15,7 @@ type Cluster struct {
 	Name      string   `yaml:"name"`
 	Endpoints []string `yaml:"endpoints"`
 	Auth      Auth     `yaml:"auth"`
+	ReadOnly  bool     `yaml:"readonly"`
 }
 
 // Auth holds authentication configuration.

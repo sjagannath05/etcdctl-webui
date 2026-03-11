@@ -13,12 +13,26 @@ import (
 )
 
 type Handler struct {
-	pool     etcd.Pool
-	clusters []config.Cluster
+	pool       etcd.Pool
+	clusters   []config.Cluster
+	clusterMap map[string]*config.Cluster
 }
 
 func NewHandler(pool etcd.Pool, clusters []config.Cluster) *Handler {
-	return &Handler{pool: pool, clusters: clusters}
+	m := make(map[string]*config.Cluster, len(clusters))
+	for i := range clusters {
+		m[clusters[i].Name] = &clusters[i]
+	}
+	return &Handler{pool: pool, clusters: clusters, clusterMap: m}
+}
+
+// requireWritable returns false and sends a 403 if the cluster is read-only.
+func (h *Handler) requireWritable(c *gin.Context, clusterName string) bool {
+	if cl, ok := h.clusterMap[clusterName]; ok && cl.ReadOnly {
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("cluster %q is read-only", clusterName)})
+		return false
+	}
+	return true
 }
 
 func (h *Handler) ctx() (context.Context, context.CancelFunc) {
@@ -51,6 +65,7 @@ func (h *Handler) ListClusters(c *gin.Context) {
 		Name      string   `json:"name"`
 		Endpoints []string `json:"endpoints"`
 		AuthType  string   `json:"authType"`
+		ReadOnly  bool     `json:"readonly"`
 	}
 	result := make([]info, 0, len(h.clusters))
 	for _, cl := range h.clusters {
@@ -62,6 +77,7 @@ func (h *Handler) ListClusters(c *gin.Context) {
 			Name:      cl.Name,
 			Endpoints: cl.Endpoints,
 			AuthType:  authType,
+			ReadOnly:  cl.ReadOnly,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"clusters": result})
@@ -133,8 +149,11 @@ func (h *Handler) GetKey(c *gin.Context) {
 
 // PutKey creates or updates the key specified in ?key=.
 func (h *Handler) PutKey(c *gin.Context) {
-	cli, _, ok := h.clientFor(c)
+	cli, clusterName, ok := h.clientFor(c)
 	if !ok {
+		return
+	}
+	if !h.requireWritable(c, clusterName) {
 		return
 	}
 	key := c.Query("key")
@@ -163,8 +182,11 @@ func (h *Handler) PutKey(c *gin.Context) {
 
 // DeleteKey deletes the key specified in ?key=.
 func (h *Handler) DeleteKey(c *gin.Context) {
-	cli, _, ok := h.clientFor(c)
+	cli, clusterName, ok := h.clientFor(c)
 	if !ok {
+		return
+	}
+	if !h.requireWritable(c, clusterName) {
 		return
 	}
 	key := c.Query("key")
@@ -233,8 +255,11 @@ func (h *Handler) ExportKeys(c *gin.Context) {
 // ImportKeys writes a batch of key-value pairs to the cluster.
 // Body: { "keys": [{ "key": "...", "value": "..." }, ...] }
 func (h *Handler) ImportKeys(c *gin.Context) {
-	cli, _, ok := h.clientFor(c)
+	cli, clusterName, ok := h.clientFor(c)
 	if !ok {
+		return
+	}
+	if !h.requireWritable(c, clusterName) {
 		return
 	}
 

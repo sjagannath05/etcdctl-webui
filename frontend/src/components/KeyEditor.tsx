@@ -8,9 +8,10 @@ interface Props {
   keyPath: string | null
   onDeleted: () => void
   onSaved: () => void
+  readOnly?: boolean
 }
 
-export default function KeyEditor({ cluster, keyPath, onDeleted, onSaved }: Props) {
+export default function KeyEditor({ cluster, keyPath, onDeleted, onSaved, readOnly = false }: Props) {
   const [kv, setKv] = useState<KeyValue | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -130,22 +131,24 @@ export default function KeyEditor({ cluster, keyPath, onDeleted, onSaved }: Prop
           <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Key</p>
           <p className="font-mono text-sm text-gray-800 break-all">{kv.key}</p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
-          {!editing && (
+        {!readOnly && (
+          <div className="flex gap-2 flex-shrink-0">
+            {!editing && (
+              <button
+                onClick={handleEdit}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              >
+                Edit
+              </button>
+            )}
             <button
-              onClick={handleEdit}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              onClick={() => setShowDelete(true)}
+              className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50"
             >
-              Edit
+              Delete
             </button>
-          )}
-          <button
-            onClick={() => setShowDelete(true)}
-            className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50"
-          >
-            Delete
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Value section */}

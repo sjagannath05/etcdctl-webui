@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { listClusters, listKeys, exportKeys, importKeys } from './api/keys'
+import { listClusters, listKeys, exportKeys, importKeys, type KeysPage } from './api/keys'
 import type { ClusterInfo } from './types'
 import KeyTree from './components/KeyTree'
 import KeyEditor from './components/KeyEditor'
@@ -12,6 +12,8 @@ export default function App() {
   const [keys, setKeys] = useState<string[]>([])
   const [keysLoading, setKeysLoading] = useState(false)
   const [keysError, setKeysError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [showNewKey, setShowNewKey] = useState(false)
 
@@ -30,19 +32,27 @@ export default function App() {
       .catch(() => setKeysError('Failed to load cluster list'))
   }, [])
 
-  const loadKeys = useCallback(async (cluster = activeCluster) => {
+  const loadKeys = useCallback(async (cluster = activeCluster, cursor = '', append = false) => {
     if (!cluster) return
     setKeysLoading(true)
     setKeysError('')
     try {
-      const data = await listKeys(cluster)
-      setKeys(data)
+      const page: KeysPage = await listKeys(cluster, '', cursor)
+      setKeys(prev => append ? [...prev, ...page.keys] : page.keys)
+      setHasMore(page.hasMore)
+      setNextCursor(page.nextCursor)
     } catch (err) {
       setKeysError(err instanceof Error ? err.message : 'Failed to load keys')
     } finally {
       setKeysLoading(false)
     }
   }, [activeCluster])
+
+  const loadMore = useCallback(() => {
+    if (hasMore && nextCursor && !keysLoading) {
+      loadKeys(activeCluster, nextCursor, true)
+    }
+  }, [hasMore, nextCursor, keysLoading, activeCluster, loadKeys])
 
   // Reload keys whenever the active cluster changes
   useEffect(() => {
@@ -205,6 +215,8 @@ export default function App() {
               selectedKey={selectedKey}
               onSelect={setSelectedKey}
               loading={keysLoading}
+              hasMore={hasMore}
+              onLoadMore={loadMore}
             />
           )}
         </div>
@@ -236,7 +248,7 @@ export default function App() {
         {isReadOnly && (
           <span className="ml-auto text-amber-400 font-medium">🔒 Read-Only</span>
         )}
-        <span className={isReadOnly ? "text-slate-500" : "ml-auto text-slate-500"}>{keys.length} keys</span>
+        <span className={isReadOnly ? "text-slate-500" : "ml-auto text-slate-500"}>{keys.length}{hasMore ? '+' : ''} keys</span>
       </footer>
 
       {/* New key modal */}

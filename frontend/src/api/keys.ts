@@ -20,11 +20,19 @@ export async function listClusters(): Promise<ClusterInfo[]> {
   return data.clusters ?? []
 }
 
-export async function listKeys(cluster: string, prefix = ''): Promise<string[]> {
+export interface KeysPage {
+  keys: string[]
+  count: number
+  hasMore: boolean
+  nextCursor: string
+}
+
+export async function listKeys(cluster: string, prefix = '', cursor = '', limit = 500): Promise<KeysPage> {
   const params = new URLSearchParams({ cluster })
   if (prefix) params.set('prefix', prefix)
-  const data = await request<{ keys: string[] }>(`/api/keys?${params}`)
-  return data.keys ?? []
+  if (cursor) params.set('cursor', cursor)
+  if (limit !== 500) params.set('limit', String(limit))
+  return request<KeysPage>(`/api/keys?${params}`)
 }
 
 export async function getKey(cluster: string, key: string): Promise<KeyValue> {

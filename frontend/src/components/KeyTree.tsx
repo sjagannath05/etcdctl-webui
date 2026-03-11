@@ -6,9 +6,11 @@ interface Props {
   selectedKey: string | null
   onSelect: (key: string) => void
   loading: boolean
+  hasMore?: boolean
+  onLoadMore?: () => void
 }
 
-export default function KeyTree({ keys, selectedKey, onSelect, loading }: Props) {
+export default function KeyTree({ keys, selectedKey, onSelect, loading, hasMore, onLoadMore }: Props) {
   const [filter, setFilter] = useState('')
 
   const displayKeys = useMemo(() => {
@@ -41,20 +43,31 @@ export default function KeyTree({ keys, selectedKey, onSelect, loading }: Props)
             {filter ? 'No matching keys' : 'No keys found'}
           </div>
         ) : (
-          tree.map((node) => (
-            <TreeNode
-              key={node.fullPath + node.name}
-              node={node}
-              depth={0}
-              selectedKey={selectedKey}
-              onSelect={onSelect}
-            />
-          ))
+          <>
+            {tree.map((node) => (
+              <TreeNode
+                key={node.fullPath + node.name}
+                node={node}
+                depth={0}
+                selectedKey={selectedKey}
+                onSelect={onSelect}
+              />
+            ))}
+            {hasMore && (
+              <button
+                onClick={onLoadMore}
+                disabled={loading}
+                className="w-full py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Load more keys...'}
+              </button>
+            )}
+          </>
         )}
       </div>
 
       <div className="px-3 py-2 border-t border-gray-100 text-xs text-gray-400">
-        {keys.length} key{keys.length !== 1 ? 's' : ''}
+        {keys.length}{hasMore ? '+' : ''} key{keys.length !== 1 ? 's' : ''}
         {filter && ` (${displayKeys.length} matching)`}
       </div>
     </div>

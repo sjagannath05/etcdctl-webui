@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -83,34 +84,79 @@ func (h *Handler) ListClusters(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"clusters": result})
 }
 
-// ListKeys returns all keys matching the given prefix (empty = all keys).
+// ListKeys returns keys matching the given prefix with cursor-based pagination.
+// Query params: ?cluster= &prefix= &limit= &cursor= (cursor = last key from previous page)
 func (h *Handler) ListKeys(c *gin.Context) {
 	cli, _, ok := h.clientFor(c)
 	if !ok {
 		return
 	}
 	prefix := c.Query("prefix")
+	cursor := c.Query("cursor")
+
+	limit := int64(500)
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.ParseInt(l, 10, 64); err == nil && parsed > 0 && parsed <= 5000 {
+			limit = parsed
+		}
+	}
 
 	ctx, cancel := h.ctx()
 	defer cancel()
 
-	var resp *clientv3.GetResponse
-	var err error
-	if prefix == "" {
-		resp, err = cli.Get(ctx, "", clientv3.WithPrefix(), clientv3.WithKeysOnly())
-	} else {
-		resp, err = cli.Get(ctx, prefix, clientv3.WithPrefix(), clientv3.WithKeysOnly())
+	opts := []clientv3.OpOption{
+		clientv3.WithKeysOnly(),
+		clientv3.WithLimit(limit + 1), // +1 to detect hasMore
 	}
+
+	var startKey string
+	if cursor != "" {
+		// Resume after cursor: range query [cursor\x00, endOfPrefix)
+		startKey = cursor + "\x00"
+		if prefix != "" {
+			opts = append(opts, clientv3.WithRange(clientv3.GetPrefixRangeEnd(prefix)))
+		} else {
+			opts = append(opts, clientv3.WithFromKey())
+		}
+	} else {
+		// First page
+		if prefix != "" {
+			startKey = prefix
+			opts = append(opts, clientv3.WithPrefix())
+		} else {
+			startKey = "\x00"
+			opts = append(opts, clientv3.WithFromKey())
+		}
+	}
+
+	resp, err := cli.Get(ctx, startKey, opts...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	keys := make([]string, 0, len(resp.Kvs))
-	for _, kv := range resp.Kvs {
+	hasMore := int64(len(resp.Kvs)) > limit
+	kvs := resp.Kvs
+	if hasMore {
+		kvs = kvs[:limit]
+	}
+
+	keys := make([]string, 0, len(kvs))
+	for _, kv := range kvs {
 		keys = append(keys, string(kv.Key))
 	}
-	c.JSON(http.StatusOK, gin.H{"keys": keys, "count": len(keys)})
+
+	var nextCursor string
+	if hasMore && len(keys) > 0 {
+		nextCursor = keys[len(keys)-1]
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"keys":       keys,
+		"count":      len(keys),
+		"hasMore":    hasMore,
+		"nextCursor": nextCursor,
+	})
 }
 
 // GetKey returns the value for the key specified in ?key=.

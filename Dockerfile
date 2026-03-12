@@ -24,7 +24,8 @@ COPY static/ ./static/
 # Overwrite static/ with the real frontend build
 COPY --from=frontend-builder /app/frontend/dist/ ./static/
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o etcd-webui .
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X main.version=${VERSION}" -o etcd-webui .
 
 # Stage 3 — Minimal runtime image
 FROM alpine:3.19

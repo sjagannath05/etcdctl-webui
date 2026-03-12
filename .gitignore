@@ -10,3 +10,6 @@ artifacts/
 
 # Go build output
 etcd-webui
+
+# Release binaries
+dist/

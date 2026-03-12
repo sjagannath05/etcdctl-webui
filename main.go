@@ -14,6 +14,8 @@ import (
 	"etcd-webui/handlers"
 )
 
+var version = "dev"
+
 //go:embed static
 var staticFiles embed.FS
 
@@ -81,7 +83,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("etcd Web UI listening on http://0.0.0.0:%s (%d cluster(s))", port, len(cfg.Clusters))
+	log.Printf("etcd Web UI %s listening on http://0.0.0.0:%s (%d cluster(s))", version, port, len(cfg.Clusters))
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

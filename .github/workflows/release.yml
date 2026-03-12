@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build frontend
+        run: |
+          cd frontend && npm ci && npm run build
+          cd ..
+          rm -rf static && mkdir -p static
+          cp -r frontend/dist/* static/
+
+      - name: Build release binaries
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          LDFLAGS="-s -w -X main.version=${VERSION}"
+          mkdir -p dist
+
+          GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/etcd-webui-linux-amd64 .
+          GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/etcd-webui-linux-arm64 .
+          GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/etcd-webui-darwin-amd64 .
+          GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/etcd-webui-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/etcd-webui-windows-amd64.exe .
+
+      - name: Create checksums
+        run: |
+          cd dist && sha256sum * > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/etcd-webui-linux-amd64
+            dist/etcd-webui-linux-arm64
+            dist/etcd-webui-darwin-amd64
+            dist/etcd-webui-darwin-arm64
+            dist/etcd-webui-windows-amd64.exe
+            dist/checksums.txt

@@ -58,7 +58,7 @@ jobs:
             dist/etcd-webui-windows-amd64.exe
             dist/checksums.txt
 
-      # ── Multi-platform Docker image ──
+      # ── Multi-platform Docker image (uses pre-built binaries, no QEMU Go compilation) ──
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -82,12 +82,17 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
 
+      - name: Prepare Docker build context
+        run: |
+          cp dist/etcd-webui-linux-amd64 dist/etcd-webui-linux-amd64
+          cp dist/etcd-webui-linux-arm64 dist/etcd-webui-linux-arm64
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile.release
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VERSION=${{ github.ref_name }}

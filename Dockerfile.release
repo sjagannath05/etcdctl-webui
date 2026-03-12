@@ -1,0 +1,9 @@
+# Minimal runtime image — binary is pre-built by CI
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app
+ARG TARGETARCH
+COPY dist/etcd-webui-linux-${TARGETARCH} ./etcd-webui
+RUN chmod +x ./etcd-webui
+EXPOSE 8080
+CMD ["./etcd-webui"]
